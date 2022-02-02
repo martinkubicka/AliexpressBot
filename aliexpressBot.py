@@ -25,6 +25,27 @@ def getLinksAliexpress(keywords, driver):
             links.append(item["href"])
     return links
 
+def getBrandNameAliexpress(links, driver):
+    brands = []
+    for item in links:
+        driver.get("https://www.aliexpress.com" + item)
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        brand = ""
+        for i in range(int(soup.text.find('{"@type":"Brand","name":')) + len('{"@type":"Brand","name":"'), len(soup.text)):
+            if "}" in soup.text[i]:
+                break
+            elif '"' in soup.text[i]:
+                continue
+            elif "/" in soup.text[i]:
+                brand = "-"
+                break
+            else:
+                brand = brand + soup.text[i]
+        brands.append(brand)
+    return brands
+
+
+
 def getKeywords():
     keywords = []
     file = open("input.txt", "r")
@@ -36,7 +57,7 @@ def main():
     keywords = getKeywords()
     driver = ctor()
     links = getLinksAliexpress(keywords, driver)
-
+    brands = getBrandNameAliexpress(links, driver)
     dtor(driver)
 
 if __name__ == '__main__':
