@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
 import time
+import openpyxl
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
@@ -11,7 +12,18 @@ def ctor():
     driver = webdriver.Chrome(executable_path=ChromeDriverManager().install())
     driver.set_window_size(1200, 1100)
     driver.set_window_position(-700, 2000)
-    return driver
+    excelfile = "output.xlsx"
+    vk = openpyxl.load_workbook(excelfile)
+    std = vk["program"]
+    vk.remove(std)
+    vk.create_sheet("program", 0)
+    sh = vk["program"]
+    sh.cell(row=1, column=1).value = "Aliexpress Link"
+    sh.cell(row=1, column=2).value = "Justia Brand"
+    sh.cell(row=1, column=3).value = "Vero Title"
+    sh.cell(row=1, column=4).value = "Vero Brand"
+    vk.save(excelfile)
+    return driver, vk, sh
 
 def dtor(driver):
     driver.quit()
@@ -50,11 +62,16 @@ def yabelleSearch(driver, link):
             title_vero = vero.text.split("title: ")[1]
     return title_vero, brand_vero
 
-def writeToExcel(link, trademark, title_vero, brand_vero):
-    pass
+def writeToExcel(link, trademark, title_vero, brand_vero, vk, sh):
+    sh.cell(row=sh.max_row+1, column=1).value = link
+    sh.cell(row=sh.max_row, column=2).value = trademark
+    sh.cell(row=sh.max_row, column=3).value = title_vero
+    sh.cell(row=sh.max_row, column=4).value = brand_vero
+    vk.save("output.xlsx")
 
-def getLinksAliexpress(keywords, driver):
+def getLinksAliexpress(keywords, driver, vk, sh):
     for i in keywords:
+        print("Searching keyword " + i)
         driver.get(("https://www.aliexpress.com/wholesale?SearchText={}").format(i))
         time.sleep(0.5)
         y = 100
@@ -64,13 +81,13 @@ def getLinksAliexpress(keywords, driver):
         time.sleep(1)
         soup = BeautifulSoup(driver.page_source, "html.parser")
         for item in soup.find_all("a", class_="_3t7zg _2f4Ho"):
-            brand = getBrandNameAliexpress(item["href"], driver)  #item href is link to aliexpress
+            brand = getBrandNameAliexpress(item["href"], driver)
             if brand != "-":
                 trademark = getJustiaTrademarks(brand, driver)
             else:
                 trademark = "-"
             vero = yabelleSearch(driver, item["href"])
-            writeToExcel(item["href"], trademark, vero[0], vero[1])
+            writeToExcel("https://www.aliexpress.com" + item["href"], trademark, vero[0], vero[1], vk, sh)
 
 def getBrandNameAliexpress(item, driver):
     driver.get("https://www.aliexpress.com" + item)
@@ -96,12 +113,15 @@ def getKeywords():
     return keywords
 
 def main():
+    print("Successfully started")
     keywords = getKeywords()
-    driver = ctor()
-    yabelleLogin(driver)
-    getLinksAliexpress(keywords, driver)
-    dtor(driver)
+    ctorvalues = ctor()
+    yabelleLogin(ctorvalues[0])
+    getLinksAliexpress(keywords, ctorvalues[0], ctorvalues[1], ctorvalues[2])
+    dtor(ctorvalues[0])
+    print("Program ended")
+    input("Press enter to continue..")
 
 if __name__ == '__main__':
     main()
-    #comments, prints
+    #comments
